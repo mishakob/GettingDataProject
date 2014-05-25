@@ -1,11 +1,9 @@
 
-# 1. Merging the training and the test sets to create one data set
+# Merging the training and the test sets to create one data set
 cnames <- read.table("./features.txt")
 clean_cnames <- cnames$V2
-head(clean_cnames)
 
 # reading train data
-
 train.x <- read.table("./train/X_train.txt", col.names=clean_cnames)
 train.subject <- read.table("./train/subject_train.txt", col.names="subject")
 train.y <- read.table("./train/y_train.txt", col.names="activity")
@@ -19,12 +17,12 @@ test.y <- read.table("./test/y_test.txt", col.names="activity")
 train.df <- cbind(train.x, train.subject, train.y)
 test.df <- cbind(test.x, test.subject, test.y)
 full.df <- rbind(train.df,test.df)
-str(full.df)
 
 #######################################################
-# 2. Extracting only the measurements on the mean and standard deviation for each measurement
+# Extracting only the measurements on the mean and standard deviation for each measurement
+
+# Creating a new vector including only column names that deal with mean or standard deviation
 meanstd.vector <- vector()
-# pushing into the new vector only columns that deal with mean or standart deviation
 for(i in 1:ncol(full.df))
   {
   if (grepl("mean|std", colnames(full.df)[i]) == "TRUE")
@@ -37,7 +35,7 @@ meanstd.vector <- c(meanstd.vector,"subject","activity")
 meanstd.vector
 tidy.df <- full.df[,meanstd.vector]
 #######################################################
-# 3. Using descriptive activity names to name the activities in the data set
+# Using descriptive activity names to name the activities in the data set
 activityLabels <- read.table("./activity_labels.txt")
 colnames(activityLabels) <- c("activity", "activityLabel")
 
@@ -52,4 +50,30 @@ for(i in 1:nrow(tidy.df))
     }
   }
 }
+#######################################################
+# Creating a second, independent tidy data set with the average of each variable for each activity and each subject. 
+library(reshape2) # reshape2 package required
 
+# melting the data frame with subject, activity code and activity label as id variables
+molten <- melt(tidy.df, id.vars = c("subject", "activity", "activityLabel"))
+
+# recasting into new data frame, grouping by subject and activity, 
+# while calculating the mean for each combination
+tidy.df2 <- dcast(molten, subject + activityLabel ~ variable, fun.aggregate=mean)
+
+#######################################################
+# Giving new (descriptive) names to the variables
+# Removing special characters and generally getting the variable names more readable
+# Using Camel Case format due to long variable names
+names(tidy.df2) <- gsub("Mag", "Magnitude", names(tidy.df2))
+names(tidy.df2) <- gsub("Acc", "Acceleration", names(tidy.df2))
+names(tidy.df2) <- gsub("\\.", "", names(tidy.df2))
+names(tidy.df2) <- gsub("mean", "Mean", names(tidy.df2))
+names(tidy.df2) <- gsub("std", "Std", names(tidy.df2))
+names(tidy.df2) <- gsub("^t", "time", names(tidy.df2))
+names(tidy.df2) <- gsub("^f", "freq", names(tidy.df2))
+names(tidy.df2) <- gsub("BodyBody", "Body", names(tidy.df2))
+names(tidy.df2)
+
+######################################################
+write.table(tidy.df2, "./tidy.txt")
